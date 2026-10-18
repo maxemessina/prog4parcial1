@@ -1,102 +1,170 @@
-# Planificación y División de Tareas - Parcial 1 (API REST Pastelería)
+# Parcial 1 - API REST de Cafetería Origen
 
-Este documento detalla la estructura, decisiones arquitectónicas y división de tareas para el desarrollo de la API REST de la pastelería, basándose estrictamente en los conceptos teóricos y buenas prácticas enseñadas en la materia (POO, Arquitectura, Testing y Validaciones).
+API para consultar productos, registrar pedidos y obtener reportes de ventas
+de la cafetería Origen. La solución aplica los contenidos de la materia sobre
+objetos, TypeScript, separación por capas, validación y testing.
 
----
+## Requisitos del proyecto
 
-## 1. Decisiones Arquitectónicas (Fundamentación Teórica)
+- Productos: café expreso, café filtrado y pastelería (muffin de chocolate y
+  porción de torta selva negra).
+- Los cafés se ofrecen en tres tamaños y tres variedades. Su precio es el
+  precio base de la preparación más los gramos de café por tamaño multiplicados
+  por el precio por gramo de la variedad. Los valores exactos están en
+  [consigna.md](./consigna.md).
+- Cada producto implementa `calcularPrecio()`.
+- Los pedidos contienen un identificador, items con `productoId` y `cantidad`,
+  y un estado.
+- La lógica permite obtener el total de cada pedido, la facturación total, las
+  cantidades vendidas por producto y el producto más vendido.
+- La API expone:
+  - `GET /productos` y `GET /productos/:id`
+  - `POST /pedidos`, `GET /pedidos` y `GET /pedidos/:id`
+  - `GET /reportes/facturacion` y `GET /reportes/mas-vendido`
 
-Para garantizar un código limpio, testeable y mantenible, aplicaremos los siguientes conceptos vistos en clase:
+## Decisiones de diseño
 
-*   **Separación de `app.ts` y `server.ts`:** Como indica la teoría, `app.ts` configurará Express/Fastify (rutas, middlewares, dependencias) y se exportará sin hacer `listen`. `server.ts` será el único encargado de arrancar el servidor. Esto es **crítico** para poder hacer tests de integración sin abrir puertos reales (usando Supertest o `app.inject()`).
-*   **Inyección de Dependencias:** Evitaremos los *singletons* globales en las rutas. Usaremos patrones como `makePedidosRouter(service)` para poder inyectar un repositorio o servicio mockeado durante los tests unitarios y de integración.
-*   **Programación Orientada a Objetos (POO):** Usaremos una **Clase Abstracta** `Producto` para definir el contrato base (incluyendo propiedades con `readonly` para los IDs y el método abstracto `calcularPrecio()`). Las subclases (`Muffin`, `TortaSelvaNegra`) aplicarán **Polimorfismo** sobrescribiendo (`override`) este método.
-*   **Validación en los bordes:** Utilizaremos **Zod** para validar el body del `POST /pedidos`, garantizando que la lógica de negocio solo reciba datos tipados y seguros.
-*   **TDD y Pirámide de Testing:** El desarrollo debe guiarse por pruebas (TDD: Rojo, Verde, Refactor). Priorizaremos muchos tests unitarios rápidos para los servicios y modelos, y tests de integración para las rutas, midiendo la cobertura (thresholds sugeridos: >70%).
+- **Separación entre `app.ts` y `server.ts`:** `app.ts` configura Express y
+  recibe los routers; no abre un puerto. `server.ts` ensambla las dependencias
+  y arranca el servidor. Esto permite probar la aplicación HTTP sin iniciar un
+  servidor real.
+- **Inyección de dependencias:** la aplicación recibe sus routers y estos
+  pueden recibir los servicios que utilizan. Así, cada capa se puede sustituir
+  por una implementación controlada durante las pruebas.
+- **POO y polimorfismo:** `Producto` define el contrato abstracto
+  `calcularPrecio()`. Las preparaciones de café y los productos de pastelería
+  implementan ese contrato con su propia regla de precio. Tamaños y variedades
+  son datos tipados de las instancias, no clases para cada combinación.
+- **Validación en el borde:** Zod valida las entradas HTTP antes de que lleguen
+  a la lógica de negocio.
+- **Responsabilidad de cada capa:** los modelos representan el dominio, los
+  servicios resuelven reglas de negocio y las rutas traducen solicitudes y
+  respuestas HTTP.
+- **Testing:** se usan pruebas unitarias para modelos y servicios, y pruebas de
+  integración para verificar las rutas. Las pruebas se organizan con el patrón
+  Arrange, Act, Assert y, cuando corresponda, siguiendo TDD.
 
----
-
-## 2. Estructura de Archivos del Proyecto
+## Estructura
 
 ```text
-/
-├── src/
-│   ├── app.ts                 # Configuración de la app (Express/Fastify + Zod)
-│   ├── server.ts              # Punto de entrada (listen)
-│   ├── models/
-│   │   ├── Producto.ts        # Clase abstracta base
-│   │   ├── Muffin.ts          # Subclase (hereda de Producto)
-│   │   ├── Torta.ts           # Subclase (hereda de Producto)
-│   │   └── Pedido.ts          # Clase/Tipo para los pedidos
-│   ├── schemas/
-│   │   └── pedidoSchema.ts    # Validaciones de Zod para el POST
-│   ├── services/
-│   │   ├── productoService.ts # Lógica de catálogo en memoria
-│   │   └── pedidoService.ts   # Lógica de facturación, totales y más vendidos
-│   └── routes/
-│       ├── productos.routes.ts
-│       ├── pedidos.routes.ts
-│       └── reportes.routes.ts
-├── tests/
-│   ├── unit/                  # Tests aislados de POO y Servicios (Vitest/Jest)
-│   └── integration/           # Tests de rutas HTTP (Supertest / app.inject)
-├── package.json
-├── tsconfig.json
-└── vitest.config.ts (o jest.config.ts)
+src/
+  app.ts
+  server.ts
+  models/
+    Producto.ts
+    Cafe.ts
+    CafeExpreso.ts
+    CafeFiltrado.ts
+    Muffin.ts
+    Torta.ts
+    Pedido.ts
+  schemas/
+    pedidoSchema.ts
+  services/
+    productoService.ts
+    pedidoService.ts
+  routes/
+    productos.routes.ts
+    pedidos.routes.ts
+    reportes.routes.ts
+tests/
+  unit/
+  integration/
+package.json
+tsconfig.json
+vitest.config.ts
 ```
 
----
+## División de tareas
 
-## 3. División de Tareas para 4 Integrantes
+La división incluye implementación y validación funcional.
 
-### 👤 Máximo Messina - Arquitectura Core y Lógica de Negocio (Prioridad Alta)
-*   **Setup Inicial:** Crear el repositorio, configurar `tsconfig.json` (modo estricto), e instalar dependencias (Express/Fastify, TypeScript, Vitest, Zod).
-*   **Arquitectura Base:** Crear `app.ts` y `server.ts` implementando la inyección de dependencias recomendada.
-*   **Dominio y POO (Models):** 
-    *   Crear la clase abstracta `Producto` con sus modificadores de acceso (`private`, `readonly` para IDs) y el método abstracto `calcularPrecio()`.
-    *   Crear las subclases `Muffin` y `TortaSelvaNegra` usando la palabra clave `override` para sus cálculos específicos de precio.
-*   **Lógica Compleja (Services):**
-    *   Desarrollar el `PedidoService`. Acá vas a usar métodos de array funcionales (`reduce`, `map`, `filter`) para calcular el **total de un pedido** (sumando los `calcularPrecio()`), la **facturación total**, y el algoritmo para agrupar ventas y determinar el **producto más vendido**.
+### Máximo Messina - Arquitectura, dominio y pedidos
 
-### 👤 Integrante 2 - Controladores, Rutas y Validación
-*Se encarga de exponer la lógica de negocio al exterior de forma segura.*
-*   **Schemas (Zod):** Crear el esquema de validación para `POST /pedidos` (asegurando que `items` sea un array, que `productoId` exista, y que `cantidad` sea un entero positivo).
-*   **Rutas de Productos:** Implementar `GET /productos` y `GET /productos/:id`. Ante un ID inexistente, debe devolver `404 Not Found`.
-*   **Rutas de Pedidos:** Implementar `POST /pedidos` (usando el esquema Zod y manejando errores `400 Bad Request`), `GET /pedidos` y `GET /pedidos/:id`.
+- **Completado:** configuración inicial del proyecto, dependencias, scripts,
+  TypeScript estricto y configuración de Vitest.
+- **Completado:** `app.ts` separado del arranque, con inyección de los routers.
+  `server.ts` valida el puerto y arranca el servidor. Hasta que existan las
+  rutas definitivas, el servidor usa routers provisionales que responden `503`.
+- **Completado:** clase abstracta `Producto`, con `id`, `nombre` y `precioBase`
+  de solo lectura y el método abstracto `calcularPrecio()`.
+- **Completado:** subclases `CafeExpreso`, `CafeFiltrado`, `Muffin` y
+  `TortaSelvaNegra`, con cálculos basados en los precios de la consigna.
+- **Completado:** tipos `Pedido` y `PedidoItem`, con la estructura de pedido
+  establecida en la consigna.
+- **En espera de coordinación:** implementar `PedidoService` para calcular el
+  total de cada pedido, la facturación, las cantidades vendidas por producto y
+  el producto más vendido. Acordar antes con Integrante 2 y el Integrante 4
+  las interfaces de los servicios de pedidos y catálogo que consumirá.
+- **En espera de Integrante 2:** conectar en `server.ts` los routers
+  definitivos cuando estén implementados.
 
-### 👤 Integrante 3 - Reportes y Testing Unitario
-*Asegura la calidad interna y termina los endpoints de reportes.*
-*   **Rutas de Reportes:** Implementar `GET /reportes/facturacion` y `GET /reportes/mas-vendido` conectándolos con el `PedidoService` del Integrante 1.
-*   **Testing Unitario (TDD):** Configurar el framework (ej. Vitest) y crear las suites en `tests/unit/`.
-    *   Testear exhaustivamente que el polimorfismo de `calcularPrecio()` funcione bien en las subclases.
-    *   Testear los cálculos complejos del `PedidoService` (Patrón AAA: Arrange, Act, Assert). Aislar los tests usando dependencias limpias por cada `it()`.
+### Integrante 2 - Validación y rutas de productos y pedidos
 
-### 👤 Integrante 4 - Testing de Integración y Preparación de Entrega
-*Prueba el sistema completo simulando a un usuario real y coordina la demo.*
-*   **Testing de Integración:** Crear la suite en `tests/integration/` usando Supertest o `app.inject()`. Probar los "happy paths" (Ej: crear un pedido retorna 201) y los casos de error (Ej: crear un pedido sin items retorna 400 y mensaje de error claro).
-*   **Medición de Cobertura:** Configurar el script de `coverage` y asegurarse de que el proyecto cumpla con métricas aceptables (revisar líneas rojas en el reporte HTML).
-*   **Demo y Video:** Preparar la colección de Postman (o comandos cURL) listos para la demostración en vivo. Coordinar el guion del video (5-8 min) asegurando que todos hablen, hacer la recorrida de código y la ejecución de `npm test`.
+- Definir en `pedidoSchema.ts` los esquemas Zod para validar los datos de
+  entrada de `POST /pedidos`, incluyendo items y cantidades positivas.
+- Implementar las rutas `GET /productos` y `GET /productos/:id`; responder
+  `404` cuando el producto no exista.
+- Implementar `POST /pedidos`, `GET /pedidos` y `GET /pedidos/:id`, incluyendo
+  respuestas `400` para entradas inválidas y `404` cuando corresponda.
+- Inyectar los servicios necesarios en los routers, sin acceder a singletons
+  globales.
 
----
+### Integrante 3 - Reportes y pruebas unitarias
 
-## 4. Instrucciones para arrancar (Paso a Paso del Integrante 1)
+- Implementar `GET /reportes/facturacion` y
+  `GET /reportes/mas-vendido`, consumiendo `PedidoService`.
+- Crear las pruebas unitarias de modelos y servicios en `tests/unit/`.
+- Cubrir precios de las subclases, cálculos de pedidos, facturación, ventas
+  por producto y producto más vendido, incluidos casos límite relevantes.
+- Mantener aisladas las pruebas y usar dobles o mocks solo cuando ayuden a
+  probar una unidad sin acoplarla a otra capa.
 
-1.  **Inicialización:** Abre la terminal en una carpeta vacía y ejecuta:
-    ```bash
-    npm init -y
-    npm i express zod
-    npm i -D typescript @types/node @types/express ts-node-dev vitest supertest @types/supertest
-    npx tsc --init
-    ```
-2.  **Ajuste del `tsconfig.json`:** Asegúrate de tener `"strict": true` y definir `"outDir": "./dist"`.
-3.  **Scripts en `package.json`:**
-    ```json
-    "scripts": {
-      "dev": "ts-node-dev src/server.ts",
-      "test": "vitest run",
-      "test:watch": "vitest",
-      "coverage": "vitest run --coverage",
-      "typecheck": "tsc --noEmit"
-    }
-    ```
-4.  **Subida inicial:** Haz tu primer commit con esta estructura base vacía y pasale el link del repo a tu equipo para que clonen y comiencen.
+### Integrante 4 - Catálogo y pruebas de integración
+
+- Implementar `productoService.ts` como catálogo en memoria de todos los
+  productos requeridos por la consigna, asignándoles identificadores estables
+  y sin duplicar la lógica de precio que pertenece a los modelos.
+- Crear las pruebas de integración en `tests/integration/` con Supertest para
+  los endpoints de productos, pedidos y reportes.
+- Verificar tanto los flujos exitosos como errores de validación, recursos
+  inexistentes y colecciones vacías, según el contrato acordado entre rutas y
+  servicios.
+- Ejecutar la suite y el reporte de cobertura; coordinar con el equipo los
+  ajustes de cobertura que correspondan. La implementación de endpoints y
+  lógica sigue siendo responsabilidad de quienes los tienen asignados.
+
+### Coordinación entre tareas
+
+- Integrante 4 acuerda con Máximo los identificadores y la composición del
+  catálogo para que pedidos y reportes cuenten las ventas por producto de
+  forma consistente.
+- Integrante 2 acuerda con Máximo la interfaz de `PedidoService` y con
+  Integrante 4 la interfaz de `productoService` antes de conectar las rutas.
+- Integrante 3 acuerda con Máximo la interfaz del servicio de pedidos antes de
+  implementar los reportes y las pruebas unitarias.
+- Cada integrante comparte con el resto el contrato público de los módulos
+  que implemente para evitar incompatibilidades al integrar.
+
+## Instalación y comandos
+
+Se requiere Node.js y npm.
+
+```bash
+npm ci
+npm run dev
+```
+
+| Comando | Uso |
+|---|---|
+| `npm run dev` | Inicia el servidor de desarrollo en el puerto 3000 o en el indicado por `PORT`. |
+| `npm run build` | Compila TypeScript en `dist/`. |
+| `npm start` | Inicia el servidor compilado. |
+| `npm test` | Ejecuta las pruebas con Vitest. |
+| `npm run test:watch` | Ejecuta Vitest en modo watch. |
+| `npm run coverage` | Ejecuta las pruebas y genera el reporte de cobertura. |
+| `npm run typecheck` | Comprueba los tipos sin generar archivos. |
+
+Mientras las rutas reales estén pendientes de integración, los routers
+provisionales responden `503`; esa respuesta indica que el endpoint todavía no
+está implementado.
