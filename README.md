@@ -58,7 +58,7 @@ Para garantizar un código limpio, testeable y mantenible, aplicaremos los sigui
 *   **Lógica Compleja (Services):**
     *   Desarrollar el `PedidoService`. Acá vas a usar métodos de array funcionales (`reduce`, `map`, `filter`) para calcular el **total de un pedido** (sumando los `calcularPrecio()`), la **facturación total**, y el algoritmo para agrupar ventas y determinar el **producto más vendido**.
 
-### 👤 Integrante 2 - Controladores, Rutas y Validación
+### 👤 Tomas Astudillo - Controladores, Rutas y Validación
 *Se encarga de exponer la lógica de negocio al exterior de forma segura.*
 *   **Schemas (Zod):** Crear el esquema de validación para `POST /pedidos` (asegurando que `items` sea un array, que `productoId` exista, y que `cantidad` sea un entero positivo).
 *   **Rutas de Productos:** Implementar `GET /productos` y `GET /productos/:id`. Ante un ID inexistente, debe devolver `404 Not Found`.
