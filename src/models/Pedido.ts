@@ -8,3 +8,7 @@ export interface Pedido {
   items: PedidoItem[];
   estado: string;
 }
+
+export interface PedidoConTotal extends Pedido {
+  readonly total: number;
+}
