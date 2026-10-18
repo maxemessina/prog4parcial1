@@ -6,8 +6,9 @@ export interface ProductoService {
   listarProductos(): Producto[];
   obtenerProductoPorId(id: number): Producto | undefined;
 }
-
-export function makeProductosRouter(
+//Esta funcion recibe el servicio desdee afuera, inyeccion de dependencias. Es decir:
+// La ruta no decide como se almacenan los productos ni crea su propio catalogo.
+export function TomaProductosRouter(
   productoService: ProductoService,
 ): Router {
   const router = Router();
