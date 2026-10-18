@@ -10,6 +10,7 @@ export interface PedidoService {
   listarPedidos(): Pedido[];
   obtenerPedidoPorId(id: number): Pedido | undefined;
 }
+
  // Crea las rutas de pedidos y recibe los servicios que necesita.
 export function TomaPedidosRouter(
   pedidoService: PedidoService,
@@ -19,6 +20,7 @@ export function TomaPedidosRouter(
 
   router.post("/", (request, response) => {
     const resultado = pedidoSchema.safeParse(request.body);
+
  // Si los datos no son válidos, devuelve un error 400
     if (!resultado.success) {
       response.status(400).json({
@@ -32,11 +34,13 @@ export function TomaPedidosRouter(
     }
 
     const { items } = resultado.data;
+
  // Comprueba que todos los productos del pedido existan.
     for (const item of items) {
       const producto = productoService.obtenerProductoPorId(
         item.productoId,
       );
+
  // Si algún producto no existe, rechaza el pedido.
       if (!producto) {
         response.status(400).json({
@@ -45,6 +49,7 @@ export function TomaPedidosRouter(
         return;
       }
     }
+
  // Delega la creación del pedido al servicio correspondiente.
     const pedido = pedidoService.crearPedido(items);
  // Devuelve el pedido creado con el estado HTTP 201.
@@ -64,6 +69,9 @@ export function TomaPedidosRouter(
       });
       return;
     }
+
+    const pedido = pedidoService.obtenerPedidoPorId(id);
+
  // Consulta el pedido mediante el servicio
     const pedido = pedidoService.obtenerPedidoPorId(id);
  // Si no existe, devuelve un error 404.
@@ -73,6 +81,7 @@ export function TomaPedidosRouter(
       });
       return;
     }
+
  // Devuelve el pedido encontrado.
     response.json(pedido);
   });
