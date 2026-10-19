@@ -15,7 +15,7 @@ describe('Pruebas de Integración - API Cafetería Origen', () => {
   const app = createApp({
     productos: TomaProductosRouter(prodService),
     pedidos: TomaPedidosRouter(pedService, prodService),
-    reportes: TomaReportesRouter(pedService), // ¡Adiós comodín, módulo de reportes integrado!
+    reportes: TomaReportesRouter(pedService), 
   });
 
   describe('GET /productos', () => {
