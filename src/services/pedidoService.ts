@@ -85,6 +85,7 @@ export class PedidoService {
       return mayor;
     }, undefined);
   }
+}
 
   private copiarPedido(pedido: Pedido): Pedido {
     return {
