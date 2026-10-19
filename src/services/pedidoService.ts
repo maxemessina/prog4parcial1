@@ -1,6 +1,7 @@
 
 
-import type { Pedido, PedidoItem } from "../models/Pedido";
+import type { Pedido, PedidoConTotal, PedidoItem } from "../models/Pedido";
+import type { Producto } from "../models/Producto";
 import type { ProductoService } from "./productoService";
 
 export class PedidoService {
@@ -11,23 +12,25 @@ export class PedidoService {
     private readonly productoService: ProductoService,
   ) {}
 
-  crearPedido(items: PedidoItem[]): Pedido {
+  crearPedido(items: PedidoItem[]): PedidoConTotal {
     const pedido: Pedido = {
-      id: this.siguienteId++,
+      id: this.siguienteId,
       items: items.map((item) => ({ ...item })),
       estado: "pendiente",
     };
 
+    const total = this.calcularTotalPedido(pedido);
     this.pedidos.push(pedido);
+    this.siguienteId++;
 
-    return pedido;
+    return {
+      ...this.copiarPedido(pedido),
+      total,
+    };
   }
 
   listarPedidos(): Pedido[] {
-    return this.pedidos.map((pedido) => ({
-      ...pedido,
-      items: pedido.items.map((item) => ({ ...item })),
-    }));
+    return this.pedidos.map((pedido) => this.copiarPedido(pedido));
   }
 
   obtenerPedidoPorId(id: number): Pedido | undefined {
@@ -37,24 +40,12 @@ export class PedidoService {
       return undefined;
     }
 
-    return {
-      ...pedido,
-      items: pedido.items.map((item) => ({ ...item })),
-    };
+    return this.copiarPedido(pedido);
   }
 
   calcularTotalPedido(pedido: Pedido): number {
     return pedido.items.reduce((total, item) => {
-      const producto = this.productoService.obtenerProductoPorId(
-        item.productoId,
-      );
-
-      if (!producto) {
-        throw new Error(
-          `Producto con ID ${item.productoId} no encontrado`,
-        );
-      }
-
+      const producto = this.obtenerProducto(item.productoId);
       return total + producto.calcularPrecio() * item.cantidad;
     }, 0);
   }
@@ -67,24 +58,16 @@ export class PedidoService {
   }
 
   calcularUnidadesVendidas(): Record<string, number> {
-    return this.pedidos.reduce<Record<string, number>>((ventas, pedido) => {
-      for (const item of pedido.items) {
-        const producto = this.productoService.obtenerProductoPorId(
-          item.productoId,
-        );
-
-        if (!producto) {
-          throw new Error(
-            `Producto con ID ${item.productoId} no encontrado`,
-          );
-        }
-
-        ventas[producto.nombre] =
-          (ventas[producto.nombre] ?? 0) + item.cantidad;
-      }
-
-      return ventas;
-    }, {});
+    return this.pedidos.reduce<Record<string, number>>(
+      (ventas, pedido) =>
+        pedido.items.reduce((acumulado, item) => {
+          const producto = this.obtenerProducto(item.productoId);
+          acumulado[producto.nombre] =
+            (acumulado[producto.nombre] ?? 0) + item.cantidad;
+          return acumulado;
+        }, ventas),
+      {},
+    );
   }
 
   obtenerProductoMasVendido():
@@ -101,5 +84,23 @@ export class PedidoService {
 
       return mayor;
     }, undefined);
+  }
+}
+
+  private copiarPedido(pedido: Pedido): Pedido {
+    return {
+      ...pedido,
+      items: pedido.items.map((item) => ({ ...item })),
+    };
+  }
+
+  private obtenerProducto(productoId: number): Producto {
+    const producto = this.productoService.obtenerProductoPorId(productoId);
+
+    if (!producto) {
+      throw new Error(`Producto con ID ${productoId} no encontrado`);
+    }
+
+    return producto;
   }
 }
