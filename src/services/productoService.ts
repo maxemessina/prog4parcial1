@@ -14,8 +14,12 @@ export interface IProductoService {
 export class ProductoService implements IProductoService {
   private productos: Producto[] = [];
 
-  constructor() {
-    this.inicializarCatalogo();
+  constructor(productosPersonalizados?: Producto[]) {
+    if (productosPersonalizados) {
+      this.productos = productosPersonalizados;
+    } else {
+      this.inicializarCatalogo();
+    }
   }
 
   private inicializarCatalogo() {
@@ -24,7 +28,6 @@ export class ProductoService implements IProductoService {
     const tamanos: TamanoCafe[] = ["Pocillo", "Mediano", "Taza grande"];
     const variedades: VariedadCafe[] = ["Brasil", "Colombia", "Etiopía"];
 
-    // Carga todos los cafés Expreso combinando tamaños y variedades
     for (const tamano of tamanos) {
       for (const variedad of variedades) {
         this.productos.push(new CafeExpreso(idCounter++, tamano, variedad));
@@ -48,3 +51,5 @@ export class ProductoService implements IProductoService {
     return this.productos.find((p) => p.id === id);
   }
 }
+
+export { ProductoService as ProductoServiceMemoria };

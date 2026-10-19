@@ -69,9 +69,7 @@ export function TomaPedidosRouter(
       });
       return;
     }
-
-    const pedido = pedidoService.obtenerPedidoPorId(id);
-
+    
  // Consulta el pedido mediante el servicio
     const pedido = pedidoService.obtenerPedidoPorId(id);
  // Si no existe, devuelve un error 404.
